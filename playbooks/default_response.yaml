@@ -1,0 +1,105 @@
+version: "1.0"
+metadata:
+  suite: "NetRaptor Unified Defense"
+  updated: "2026-05-25"
+  author: "Rayyan Umair"
+
+playbooks:
+  - id: "PLAY-001"
+    name: "Critical Active Directory Domain Protection"
+    trigger_source: "AD-Audit"
+    match_detections:
+      - "AD-002"
+      - "AD-004"
+      - "AD-004-DCSYNC"
+      - "AD-004-ADMINSD"
+      - "AD-004-KRBTGT"
+    actions:
+      - type: "identity_lockdown"
+        target: "actor_username"
+        parameters:
+          disable_account: true
+          revoke_active_kerberos_tickets: true
+      - type: "generate_forensic_case"
+        severity: "Critical"
+      - type: "notify_siemulate"
+        target: "target_entity"
+
+  - id: "PLAY-002"
+    name: "Kerberoasting Response"
+    trigger_source: "AD-Audit"
+    match_detections:
+      - "AD-001-KERB"
+      - "AD-001-ASREP"
+    actions:
+      - type: "log_evidence"
+        target: "actor_username"
+        parameters:
+          note: "Kerberoasting activity detected - service account password rotation required."
+      - type: "generate_forensic_case"
+        severity: "High"
+      - type: "notify_siemulate"
+        target: "target_entity"
+
+  - id: "PLAY-003"
+    name: "Network Exfiltration Host Isolation"
+    trigger_source: "SIEMulate"
+    match_detections:
+      - "STRIKE-003"
+      - "STRIKE-005"
+      - "NET-003"
+    actions:
+      - type: "host_isolation"
+        target: "source_ip"
+        parameters:
+          allow_management_ip: true
+          flush_volatile_triage: true
+      - type: "generate_forensic_case"
+        severity: "High"
+      - type: "notify_siemulate"
+        target: "target_entity"
+
+  - id: "PLAY-004"
+    name: "DNS Tunneling Containment"
+    trigger_source: "DNStalon"
+    match_detections:
+      - "DNS-001"
+      - "DNS-002"
+      - "DNS-003"
+    actions:
+      - type: "log_evidence"
+        target: "target_entity"
+        parameters:
+          note: "DNS tunneling or beaconing detected - block DNS queries from entity at perimeter."
+      - type: "generate_forensic_case"
+        severity: "High"
+
+  - id: "PLAY-005"
+    name: "Lateral Movement Isolation"
+    trigger_source: "AD-Audit"
+    match_detections:
+      - "AD-003-LATERAL"
+      - "AD-003-BRUTE"
+    actions:
+      - type: "identity_lockdown"
+        target: "actor_username"
+        parameters:
+          disable_account: false
+          revoke_active_kerberos_tickets: true
+      - type: "generate_forensic_case"
+        severity: "High"
+
+  - id: "PLAY-006"
+    name: "PacketStrike Critical Strike Response"
+    trigger_source: "PacketStrike"
+    match_detections:
+      - "STRIKE-004"
+      - "STRIKE-005"
+    actions:
+      - type: "host_isolation"
+        target: "source_ip"
+        parameters:
+          allow_management_ip: true
+          flush_volatile_triage: false
+      - type: "generate_forensic_case"
+        severity: "Critical"
